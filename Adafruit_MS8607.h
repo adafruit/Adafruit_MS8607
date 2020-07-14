@@ -13,7 +13,7 @@
  *  I2C ADDRESS/BITS/SETTINGS. The MS8607 uses two different I2C addresses
  */
 #define MS8607_PT_ADDRESS (0x76) /**< The default pressure and temperature I2C address for the sensor. */
-#define MS8607_RH_ADDRESS (0x76) /**< Humidity I2C address for the sensor. */
+#define MS8607_RH_ADDRESS (0x40) /**< Humidity I2C address for the sensor. */
 #define MS8607_CHIPID (0xXX) /**< Default chip ID. */
 
 //  Forward declarations of Wire and SPI for board/variant combinations that
