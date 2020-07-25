@@ -15,7 +15,7 @@ void setup(void) {
     Serial.println("Failed to find MS8607 chip");
     while (1) { delay(10); }
   }
-  Serial.println("MS8607 Found!");
+  Serial.println("MS8607 Found!\n\n\n");
 
 // //  ms8607_pressure.setDataRate(MS8607_RATE_1_HZ);
 //   Serial.print("Data rate set to: ");
@@ -30,6 +30,9 @@ void setup(void) {
 
 void loop() {
     Serial.println("LoOP");
+    ms8607_pressure._read();
+    Serial.print("Temperature: ");Serial.print(ms8607_pressure.temperature); Serial.println(" degrees C");
+    Serial.print("Pressure: ");Serial.print(ms8607_pressure.pressure); Serial.println(" degrees C");
 //   sensors_event_t temp;
 //   sensors_event_t humidity;
 //   ms8607_pressure.getEvent(&humidity, &temp);// populate temp and humidity objects with fresh data

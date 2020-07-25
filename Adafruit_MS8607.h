@@ -53,7 +53,23 @@ extern SPIClass SPI; /**< Forward declaration of SPI object */
   0xF5 //!< Humidity sensor measure relative humidity no hold master
 /* PROM READ RH is from 0xA0 to 0xAE. Not sure whether or not to add */
 
+
+#define PSENSOR_RESET_COMMAND 0x1E
+#define PSENSOR_START_PRESSURE_ADC_CONVERSION 0x40
+#define PSENSOR_START_TEMPERATURE_ADC_CONVERSION 0x50
+#define PSENSOR_READ_ADC 0x00
+
+typedef enum {
+  MS8607_pressure_resolution_osr_256, ///< 0
+  MS8607_pressure_resolution_osr_512, ///< 1
+  MS8607_pressure_resolution_osr_1024, ///< 2
+  MS8607_pressure_resolution_osr_2048, ///< 3
+  MS8607_pressure_resolution_osr_4096, ///< 4
+  MS8607_pressure_resolution_osr_8192, ///< 5
+} ms8607_pressure_range_t;
 /*!
+
+
 
 class Adafruit_MS8607;
 
@@ -105,8 +121,10 @@ public:
   // Adafruit_Sensor *getTemperatureSensor(void);
   // Adafruit_Sensor *getHumiditySensor(void);
 
+  bool _read(void);
+  uint32_t pressure, temperature;
 protected:
-  // bool _read(void);
+
   // virtual bool _init(int32_t sensor_id);
 
   // float corrected_temp,   ///< Last reading's temperature (C) before scaling
@@ -136,8 +154,9 @@ private:
 
   void _applyTemperatureCorrection(void);
   void _applyHumidityCorrection(void);
+  ms8607_pressure_range_t psensor_resolution_osr;
+  uint16_t press_sens, press_offset, press_sens_temp_coeff, press_offset_temp_coeff , ref_temp, temp_temp_coeff; ///< calibration constants
 };
-
 #endif
 
 //   Adafruit_Sensor *getPTSensor(void);
