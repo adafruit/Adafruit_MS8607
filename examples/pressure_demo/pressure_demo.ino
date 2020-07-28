@@ -29,7 +29,6 @@ void setup(void) {
 }
 
 void loop() {
-    Serial.println("LoOP");
     ms8607_pressure._read();
     Serial.print("Temperature: ");Serial.print(ms8607_pressure.temperature); Serial.println(" degrees C");
     Serial.print("Pressure: ");Serial.print(ms8607_pressure.pressure); Serial.println(" degrees C");
