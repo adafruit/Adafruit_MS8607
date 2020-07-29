@@ -91,34 +91,36 @@ bool Adafruit_MS8607::reset(void) {
  *   @returns True if chip identified and initialized
  */
 bool Adafruit_MS8607::_init(int32_t sensor_id) {
-
   uint8_t offset = 0;
   uint16_t buffer[7];
-  bool success = false;
   uint8_t tmp_buffer[2];
+  bool success  = true;
 
   for (int i = 0; i < 7; i++) {
     offset = 2 * i;
     tmp_buffer[0] = PROM_ADDRESS_READ_ADDRESS_0 + offset;
-    success |= i2c_dev->write_then_read(tmp_buffer, 1, tmp_buffer, 2);
+    success = i2c_dev->write_then_read(tmp_buffer, 1, tmp_buffer, 2);
     buffer[i] = tmp_buffer[0] << 8;
     buffer[i] |= tmp_buffer[1];
-  }
-  if (success != 0) {
-    return success;
+    // if (!success){
+    //   Serial.
+    //   Serial.println("no success on getting calibration constants");
+    //   return false;
+    // }
   }
 
-  if (!_psensor_crc_check(buffer, (buffer[0] & 0xF000) >> 12))
+  if (!_psensor_crc_check(buffer, (buffer[0] & 0xF000) >> 12)){
+
+    Serial.println("bad crc?!");
     return false;
+  }
   press_sens = buffer[1];
   press_offset = buffer[2];
   press_sens_temp_coeff = buffer[3];
   press_offset_temp_coeff = buffer[4];
   ref_temp = buffer[5];
   temp_temp_coeff = buffer[6];
-
-  // Set resolution to the highest level (17 ms per reading)
-  psensor_resolution_osr = MS8607_pressure_resolution_osr_8192;
+  psensor_resolution_osr = MS8607_PRESSURE_RESOLUTION_OSR_8192;
 
   return true;
 }
@@ -135,45 +137,46 @@ bool Adafruit_MS8607::_read(void) {
   uint8_t i;
 
   uint32_t raw_temp, raw_pressure;
+
   // First read temperature
-  //   cmd = psensor_resolution_osr * 2;
-  //   cmd |= PSENSOR_START_TEMPERATURE_ADC_CONVERSION;
-  // //  7 ,8. ,9. 10 ,11. 12. 13
-  // // 1, 2,   4, 5,  9,  18
-  //   status |= i2c_dev->write(&cmd, 1);
+    cmd = psensor_resolution_osr * 2;
+    cmd |= PSENSOR_START_TEMPERATURE_ADC_CONVERSION;
+    status |= i2c_dev->write(&cmd, 1);
 
-  //   // 20ms wait for conversion
-  //   //delay(psensor_conversion_time[(cmd & PSENSOR_CONVERSION_OSR_MASK) /
-  //   2]);
-  //   // delay(psensor_conversion_time[psensor_resolution_osr]);
-  //   delay(18);
+    // 20ms wait for conversion
+    // TODO: change delay depending on resolution
+    // delay(psensor_conversion_time[psensor_resolution_osr]);
+    delay(18);
 
-  //   buffer[0] = PSENSOR_READ_ADC;
-  //   status |= i2c_dev->write_then_read(buffer, 1, buffer, 3);
+    buffer[0] = PSENSOR_READ_ADC;
+    status |= i2c_dev->write_then_read(buffer, 1, buffer, 3);
 
-  //   raw_temp = ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) |
-  //   buffer[2];
+    raw_temp = ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) |   buffer[2];
 
-  //   // Now read pressure
-  //   cmd = psensor_resolution_osr * 2; // ( << 1) OSR = USER[6
-  //   cmd |= PSENSOR_START_PRESSURE_ADC_CONVERSION;
-  //   status |= i2c_dev->write(&cmd, 1);
-  //   delay(18);
+    // Now read pressure
+    cmd = psensor_resolution_osr * 2; // ( << 1) OSR = USER[6
+    cmd |= PSENSOR_START_PRESSURE_ADC_CONVERSION;
+    status |= i2c_dev->write(&cmd, 1);
+    delay(18);
 
-  //   buffer[0] = PSENSOR_READ_ADC;
-  //   status |= i2c_dev->write_then_read(buffer, 1, buffer, 3);
+    buffer[0] = PSENSOR_READ_ADC;
+    status |= i2c_dev->write_then_read(buffer, 1, buffer, 3);
 
-  //   raw_pressure = ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) |
-  //   buffer[2];
-  // TODO: TESTING CONSTANTS; REMOVE
-  press_sens = 40453;
-  press_offset = 41274;
-  press_sens_temp_coeff = 24442;
-  press_offset_temp_coeff = 24850;
-  ref_temp = 30415;
-  temp_temp_coeff = 27360;
-  raw_temp = 0x7C1584;
-  raw_pressure = 0x682EF1;
+    raw_pressure = ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) | buffer[2];
+
+
+  // Serial.print("read raw temp: 0x"); Serial.println(raw_temp, HEX);
+  // Serial.print("read raw pressure: 0x"); Serial.println(raw_pressure, HEX);
+
+  // // TODO: TESTING CONSTANTS; REMOVE
+  // Serial.print("press_sens: "); Serial.println(press_sens);
+  // Serial.print("press_offset: "); Serial.println(press_offset);
+  // Serial.print("press_sens_temp_coeff: "); Serial.println(press_sens_temp_coeff);
+  // Serial.print("press_offset_temp_coeff: "); Serial.println(press_offset_temp_coeff);
+  // Serial.print("ref_temp: "); Serial.println(ref_temp);
+  // Serial.print("temp_temp_coeff: "); Serial.println(temp_temp_coeff);
+  // Serial.print("raw_temp: "); Serial.println(raw_temp);
+  // Serial.print("raw_pressure: "); Serial.println(raw_pressure);
 
   // raw temp 7C1584
   // raw pressure 682EF1

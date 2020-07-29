@@ -63,12 +63,12 @@ extern SPIClass SPI; /**< Forward declaration of SPI object */
  * 
  */
 typedef enum {
-  MS8607_pressure_resolution_osr_256,  ///< 0
-  MS8607_pressure_resolution_osr_512,  ///< 1
-  MS8607_pressure_resolution_osr_1024, ///< 2
-  MS8607_pressure_resolution_osr_2048, ///< 3
-  MS8607_pressure_resolution_osr_4096, ///< 4
-  MS8607_pressure_resolution_osr_8192, ///< 5
+  MS8607_PRESSURE_RESOLUTION_OSR_256,  ///< 0
+  MS8607_PRESSURE_RESOLUTION_OSR_512,  ///< 1
+  MS8607_PRESSURE_RESOLUTION_OSR_1024, ///< 2
+  MS8607_PRESSURE_RESOLUTION_OSR_2048, ///< 3
+  MS8607_PRESSURE_RESOLUTION_OSR_4096, ///< 4
+  MS8607_PRESSURE_RESOLUTION_OSR_8192, ///< 5
 } ms8607_pressure_range_t;
 /*!
 
@@ -125,7 +125,7 @@ public:
   // Adafruit_Sensor *getHumiditySensor(void);
 
   bool _read(void);
-  float pressure, temperature;
+  float pressure, /** the current pressure measurement **/temperature; ///< the current temperature measurement
 
 protected:
   // virtual bool _init(int32_t sensor_id);
@@ -157,7 +157,7 @@ private:
 
   void _applyTemperatureCorrection(void);
   void _applyHumidityCorrection(void);
-  ms8607_pressure_range_t psensor_resolution_osr;
+  uint8_t  psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
       temp_temp_coeff; ///< calibration constants
