@@ -54,13 +54,15 @@ extern SPIClass SPI; /**< Forward declaration of SPI object */
 /* PROM READ RH is from 0xA0 to 0xAE. Not sure whether or not to add */
 
 #define PSENSOR_RESET_COMMAND 0x1E ///< Command to reset pressure sensor
-#define PSENSOR_START_PRESSURE_ADC_CONVERSION 0x40 ///< Command to start pressure ADC measurement
-#define PSENSOR_START_TEMPERATURE_ADC_CONVERSION 0x50 ///< Command to start temperature ADC measurement
+#define PSENSOR_START_PRESSURE_ADC_CONVERSION                                  \
+  0x40 ///< Command to start pressure ADC measurement
+#define PSENSOR_START_TEMPERATURE_ADC_CONVERSION                               \
+  0x50                        ///< Command to start temperature ADC measurement
 #define PSENSOR_READ_ADC 0x00 ///< Temp and pressure ADC read command
 
 /**
  * @brief Pressure sensor resolution options
- * 
+ *
  */
 typedef enum {
   MS8607_PRESSURE_RESOLUTION_OSR_256,  ///< 0
@@ -125,7 +127,10 @@ public:
   // Adafruit_Sensor *getHumiditySensor(void);
 
   bool _read(void);
-  float pressure, /** the current pressure measurement **/temperature; ///< the current temperature measurement
+  float pressure,  ///< The current pressure measurement
+      temperature; ///< the current
+                   ///< temperature
+                   ///< measurement
 
 protected:
   // virtual bool _init(int32_t sensor_id);
@@ -157,7 +162,7 @@ private:
 
   void _applyTemperatureCorrection(void);
   void _applyHumidityCorrection(void);
-  uint8_t  psensor_resolution_osr;
+  uint8_t psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
       temp_temp_coeff; ///< calibration constants
