@@ -42,37 +42,33 @@
  */
 Adafruit_MS8607::Adafruit_MS8607(void) {}
 Adafruit_MS8607::~Adafruit_MS8607(void) {
-  // if (temp_sensor) {
-  //   delete temp_sensor;
-  // }
-  // if (humidity_sensor) {
-  //   delete humidity_sensor;
-  // }
+  if (temp_sensor) {
+    delete temp_sensor;
+  }
 }
 
 /*!
  *    @brief  Sets up the hardware and initializes I2C
- *    @param  i2c_address
- *            The I2C address to be used.
  *    @param  wire
  *            The Wire object to be used for I2C connections.
  *    @param  sensor_id
  *            The unique ID to differentiate the sensors from others
  *    @return True if initialization was successful, otherwise false.
  */
-bool Adafruit_MS8607::begin(uint8_t i2c_address, TwoWire *wire,
-                            int32_t sensor_id) {
+bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
 
   if (i2c_dev) {
     delete i2c_dev; // remove old interface
   }
 
-  i2c_dev = new Adafruit_I2CDevice(i2c_address, wire);
+  i2c_dev = new Adafruit_I2CDevice(MS8607_PT_ADDRESS, wire);
 
   if (!i2c_dev->begin()) {
     return false;
   }
   // return reset();
+  temp_sensor = new Adafruit_MS8607_Temp(this);
+
   return _init(sensor_id);
 }
 
@@ -92,7 +88,7 @@ bool Adafruit_MS8607::reset(void) {
  */
 bool Adafruit_MS8607::_init(int32_t sensor_id) {
   uint8_t offset = 0;
-  uint16_t buffer[7];
+  uint16_t buffer[8];
   uint8_t tmp_buffer[2];
 
   for (int i = 0; i < 7; i++) {
@@ -117,6 +113,60 @@ bool Adafruit_MS8607::_init(int32_t sensor_id) {
   return true;
 }
 
+/**************************************************************************/
+/*!
+    @brief  Gets the humidity sensor and temperature values as sensor events
+    @param  pressure Sensor event object that will be populated with pressure
+   data
+    @param  temp Sensor event object that will be populated with temp data
+    @param  humidity Sensor event object that will be populated with humidity
+   data
+    @returns true if the event data was read successfully
+*/
+/**************************************************************************/
+bool Adafruit_MS8607::getEvent(sensors_event_t *pressure, sensors_event_t *temp,
+                               sensors_event_t *humidity) {
+  uint32_t t = millis();
+
+  _read();
+  // use helpers to fill in the events
+  if (temp)
+    fillTempEvent(temp, t);
+  // if (humidity)
+  //   fillHumidityEvent(humidity, t);
+  return true;
+}
+
+/**
+ * @brief  Gets the sensor_t object describing the MS8607's tenperature sensor
+ *
+ * @param sensor The sensor_t object to be populated
+ */
+void Adafruit_MS8607_Temp::getSensor(sensor_t *sensor) {
+  /* Clear the sensor_t object */
+  memset(sensor, 0, sizeof(sensor_t));
+
+  /* Insert the sensor name in the fixed length char array */
+  strncpy(sensor->name, "MS8607_T", sizeof(sensor->name) - 1);
+  sensor->name[sizeof(sensor->name) - 1] = 0;
+  sensor->version = 1;
+  sensor->sensor_id = _sensorID;
+  sensor->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+  sensor->min_delay = 0;
+  sensor->min_value = -40;
+  sensor->max_value = 85;
+  sensor->resolution = 0.3; // depends on calibration data?
+}
+/*!
+    @brief  Gets the temperature as a standard sensor event
+    @param  event Sensor event object that will be populated
+    @returns true
+*/
+bool Adafruit_MS8607_Temp::getEvent(sensors_event_t *event) {
+  _theMS8607->getEvent(NULL, event, NULL);
+
+  return true;
+}
 /**
  * @brief Read the current pressure and temperature
  *
@@ -195,8 +245,8 @@ bool Adafruit_MS8607::_read(void) {
   // Temperature compensated pressure = D1 * SENS - OFF
   P = (((raw_pressure * SENS) >> 21) - OFF) >> 15;
 
-  temperature = ((float)TEMP - T2) / 100;
-  pressure = (float)P / 100;
+  _temperature = ((float)TEMP - T2) / 100;
+  _pressure = (float)P / 100;
 
   return status;
 
@@ -231,4 +281,20 @@ bool Adafruit_MS8607::_psensor_crc_check(uint16_t *n_prom, uint8_t crc) {
   n_rem >>= 12;
   n_prom[0] = crc_read;
   return (n_rem == crc);
+}
+/********************* Sensor Methods ****************************************/
+void Adafruit_MS8607::fillTempEvent(sensors_event_t *temp, uint32_t timestamp) {
+  memset(temp, 0, sizeof(sensors_event_t));
+  temp->version = sizeof(sensors_event_t);
+  temp->sensor_id = _sensorid_temp;
+  temp->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+  temp->timestamp = timestamp;
+  temp->temperature = _temperature;
+}
+/**
+ * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
+ * @return Adafruit_Sensor* a pointer to the temperature sensor object
+ */
+Adafruit_Sensor *Adafruit_MS8607::getTemperatureSensor(void) {
+  return temp_sensor;
 }

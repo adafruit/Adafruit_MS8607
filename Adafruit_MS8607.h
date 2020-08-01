@@ -18,11 +18,6 @@
           */
 #define MS8607_RH_ADDRESS (0x40) /**< Humidity I2C address for the sensor. */
 
-//  Forward declarations of Wire and SPI for board/variant combinations that
-//  don't have a default 'Wire' or 'SPI'
-extern TwoWire Wire; /**< Forward declaration of Wire object */
-extern SPIClass SPI; /**< Forward declaration of SPI object */
-
 // PSENSOR commands
 #define PROM_ADDRESS_READ_ADDRESS_0 0xA0 ///< 16-bit registers through 0xAE
 
@@ -72,93 +67,67 @@ typedef enum {
   MS8607_PRESSURE_RESOLUTION_OSR_4096, ///< 4
   MS8607_PRESSURE_RESOLUTION_OSR_8192, ///< 5
 } ms8607_pressure_range_t;
-/*!
-
-
 
 class Adafruit_MS8607;
 
-// /** Adafruit Unified Sensor interface for temperature component of MS8607 */
-// class Adafruit_MS8607_PT : public Adafruit_Sensor {
-// public:
-//   /** @brief Create an Adafruit_Sensor compatible object for the temp sensor
-//       @param parent A pointer to the MS8607 class */
-//   Adafruit_MS8607_PT(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
-//   bool getEvent(sensors_event_t *);
-//   void getSensor(sensor_t *);
+/**
+ * @brief Adafruit Unified Sensor interface for the temperature sensor component
+ * of MS8607
+ *
+ */
+class Adafruit_MS8607_Temp : public Adafruit_Sensor {
+public:
+  /** @brief Create an Adafruit_Sensor compatible object for the temp sensor
+      @param parent A pointer to the MS8607 class */
+  Adafruit_MS8607_Temp(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
 
-// private:
-//   int _sensorID = XXXX;
-//   Adafruit_MS8607 *_theMS8607 = NULL;
-// };
+  bool getEvent(sensors_event_t *);
+  void getSensor(sensor_t *);
 
-// /** Adafruit Unified Sensor interface for pressure component of MS8607 */
-// class Adafruit_MS8607_Pressure : public Adafruit_Sensor {
-// public:
-//   /** @brief Create an Adafruit_Sensor compatible object for the PHT
-//       @param parent A pointer to the MS8607 class */
-//   Adafruit_MS8607_PHT(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
-//   bool getEvent(sensors_event_t *);
-//   void getSensor(sensor_t *);
-
-// private:
-//   int _sensorID = 0;
-//   Adafruit_MS8607 *_theMS8607 = NULL;
-// };
+private:
+  int _sensorID = 0x8600;
+  Adafruit_MS8607 *_theMS8607 = NULL;
+};
 
 /**
  * Driver for the Adafruit MS8607 PHT sensor.
  */
 class Adafruit_MS8607 {
 public:
-  Adafruit_MS8607();
-  ~Adafruit_MS8607();
+  Adafruit_MS8607(void);
+  ~Adafruit_MS8607(void);
 
-  bool begin(uint8_t i2c_addr = MS8607_PT_ADDRESS, TwoWire *wire = &Wire,
-             int32_t sensor_id = 0);
+  bool begin(TwoWire *wire = &Wire, int32_t sensor_id = 0);
   bool _init(int32_t sensor_id);
-  // ms8607_rate_t getDataRate(void);
-  // void setDataRate(ms8607_rate_t data_rate);
 
   bool reset(void);
-
-  // bool getEvent(sensors_event_t *humidity, sensors_event_t *temp);
-  // Adafruit_Sensor *getTemperatureSensor(void);
-  // Adafruit_Sensor *getHumiditySensor(void);
+  // SENSOR
+  bool getEvent(sensors_event_t *pressure, sensors_event_t *temp,
+                sensors_event_t *humidity);
+  Adafruit_Sensor *getTemperatureSensor(void);
 
   bool _read(void);
-  float pressure,  ///< The current pressure measurement
-      temperature; ///< the current
-                   ///< temperature
-                   ///< measurement
+  float _pressure,  ///< The current pressure measurement
+      _temperature, ///< the current temperature measurement
+      _humidity;    ///< The current humidity measurement
 
 protected:
-  // virtual bool _init(int32_t sensor_id);
-
-  // float corrected_temp,   ///< Last reading's temperature (C) before scaling
-  //     corrected_humidity; ///< Last reading's humidity (percent) before
-  //     scaling
-
-  uint16_t _sensorid_humidity; ///< ID number for humidity
-  uint16_t _sensorid_temp;     ///< ID number for temperature
+  // uint16_t _sensorid_presure;     ///< ID number for pressure
+  uint16_t _sensorid_temp; ///< ID number for temperature
 
   Adafruit_I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
-  Adafruit_SPIDevice *spi_dev = NULL; ///< Pointer to I2C bus interface
 
-  //  Adafruit_MS8607_Humidity *rh_sensor = NULL;
-  //   Adafruit_MS8607_PT *pt_sensor = NULL;
+  Adafruit_MS8607_Temp *temp_sensor = NULL; ///< Temp sensor data object
 
 private:
   bool _psensor_crc_check(uint16_t *n_prom, uint8_t crc);
   void _fetchTempCalibrationValues(void);
   void _fetchHumidityCalibrationValues(void);
-  friend class Adafruit_MS8607_Temp;     ///< Gives access to private members to
-                                         ///< Temp data object
-  friend class Adafruit_MS8607_Humidity; ///< Gives access to private members to
-                                         ///< Humidity data object
+
+  friend class Adafruit_MS8607_Temp; ///< Gives access to private members to
+                                     ///< Temperature data object
 
   void fillTempEvent(sensors_event_t *temp, uint32_t timestamp);
-  void fillHumidityEvent(sensors_event_t *humidity, uint32_t timestamp);
 
   void _applyTemperatureCorrection(void);
   void _applyHumidityCorrection(void);
@@ -168,25 +137,3 @@ private:
       temp_temp_coeff; ///< calibration constants
 };
 #endif
-
-//   Adafruit_Sensor *getPTSensor(void);
-//   Adafruit_Sensor *getRHSensor(void);
-
-// private:
-//   TwoWire *_wire; /**< Wire object */
-//   SPIClass *_spi; /**< SPI object */
-
-//   Adafruit_MS8607_Humidity *rh_sensor = NULL;
-//   Adafruit_MS8607_PT *pt_sensor = NULL;
-
-//   uint8_t _i2caddr;
-
-//   int32_t _sensorID;
-//   int32_t t_fine;
-//   int8_t _cs, _mosi, _miso, _sck;
-//   ms8607_calib_data _ms8607_calib;
-//   config _configReg;
-//   ctrl_meas _measReg;
-// };
-
-// #endif
