@@ -172,12 +172,12 @@ bool Adafruit_MS8607::getEvent(sensors_event_t *pressure, sensors_event_t *temp,
                                sensors_event_t *humidity) {
   uint32_t t = millis();
 
-  // _read();
-  // // use helpers to fill in the events
-  // if (temp)
-  //   fillTempEvent(temp, t);
-  // if (pressure)
-  //   fillPressureEvent(pressure, t);
+  _read();
+  // use helpers to fill in the events
+  if (temp)
+    fillTempEvent(temp, t);
+  if (pressure)
+    fillPressureEvent(pressure, t);
   if (humidity) {
     _read_humidity();
     fillHumidityEvent(humidity, t);
@@ -370,25 +370,14 @@ bool Adafruit_MS8607::_read_humidity(void) {
   hum_i2c_dev->write(buffer, 1);
   delay(20);
   hum_i2c_dev->read(buffer, 3);
-  Serial.print("buffer[0]: 0x");
-  Serial.println(buffer[0], HEX);
-  Serial.print("buffer[1]: 0x");
-  Serial.println(buffer[1], HEX);
-  Serial.print("buffer[2]: 0x");
-  Serial.println(buffer[2], HEX);
 
   uint16_t raw_hum = buffer[0] << 8 | buffer[1];
   uint8_t crc = buffer[2];
-
-  Serial.print("raw hum: 0x");
-  Serial.println(raw_hum, HEX);
-  Serial.print("crc: 0x");
-  Serial.println(crc, HEX);
-  bool crc_ok = _hsensor_crc_check(raw_hum, crc);
-  // subbint this in crashes????!
-  // Serial.print("CRC valid: ");Serial.println(crc_ok);
-  // _humidity = ((float)raw_hum * (125 / (1<<16))) - 6;
-  _humidity = 100;
+  if (!_hsensor_crc_check(raw_hum, crc)) {
+    return false;
+  }
+  _humidity = raw_hum * MS8607_RH_LSB;
+  _humidity -= 6;
   return true;
 }
 

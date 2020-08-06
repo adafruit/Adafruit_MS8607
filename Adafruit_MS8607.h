@@ -136,7 +136,9 @@
   0x2 ///< user reg disable otp reload mask
 
 #define MS8607_RH_ADDRESS (0x40) /**< Humidity I2C address for the sensor. */
-
+#define MS8607_RH_LSB                                                          \
+  0.0019073486328125; ///< value for each count coming from the humidity
+                      ///< register
 // PSENSOR commands
 #define PROM_ADDRESS_READ_ADDRESS_0 0xA0 ///< 16-bit registers through 0xAE
 
