@@ -114,7 +114,7 @@ bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
   if (!hum_i2c_dev->begin()) {
     return false;
   }
-  // return reset();
+  reset();
   temp_sensor = new Adafruit_MS8607_Temp(this);
   pressure_sensor = new Adafruit_MS8607_Pressure(this);
   humidity_sensor = new Adafruit_MS8607_Humidity(this);
@@ -129,17 +129,21 @@ bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
  */
 bool Adafruit_MS8607::reset(void) {
   uint8_t cmd = P_T_RESET;
-  return pt_i2c_dev->write(&cmd, 1);
+  bool success = true;
+  success = pt_i2c_dev->write(&cmd, 1);
+  if (!success) {
+    return false;
+  }
 
-  //   _i2cPort->write((uint8_t)HSENSOR_RESET_COMMAND);
-  // HSENSOR_RESET_TIME 15 (ms)
+  cmd = HSENSOR_RESET_COMMAND;
+  success = hum_i2c_dev->write(&cmd, 1);
+  if (!success) {
+    return false;
+  }
+  delay(15);
 }
 
-/*!  @brief Initializer for post i2c/spi init
- *   @param sensor_id Optional unique ID for the sensor set
- *   @returns True if chip identified and initialized
- */
-bool Adafruit_MS8607::init(int32_t sensor_id) {
+bool Adafruit_MS8607::_fetch_temp_calibration_values(void) {
   uint8_t offset = 0;
   uint16_t buffer[8];
   uint8_t tmp_buffer[2];
@@ -161,12 +165,28 @@ bool Adafruit_MS8607::init(int32_t sensor_id) {
   press_offset_temp_coeff = buffer[4];
   ref_temp = buffer[5];
   temp_temp_coeff = buffer[6];
-  psensor_resolution_osr = MS8607_PRESSURE_RESOLUTION_OSR_8192;
+  return true;
+}
 
-  enableHumidityClockStretching(false);
-  setHumidityResolution(MS8607_HUMIDITY_RESOLUTION_OSR_12b);
+/*!  @brief Initializer for post i2c/spi init
+ *   @param sensor_id Optional unique ID for the sensor set
+ *   @returns True if chip identified and initialized
+ */
+bool Adafruit_MS8607::init(int32_t sensor_id) {
 
-  _hum_sensor_i2c_read_mode = MS8607_I2C_NO_HOLD;
+  if (!_fetch_temp_calibration_values()) {
+    return false;
+  }
+  if (!enableHumidityClockStretching(false)) {
+    return false;
+  }
+  if (!setHumidityResolution(MS8607_HUMIDITY_RESOLUTION_OSR_12b)) {
+    return false;
+  }
+  if (!setPressureResolution(MS8607_PRESSURE_RESOLUTION_OSR_4096)) {
+    return false;
+  }
+
   return true;
 }
 
@@ -203,7 +223,9 @@ bool Adafruit_MS8607::setHumidityResolution(
  *
  * @return ms8607_pressure_resolution_t the current resolution
  */
-ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {}
+ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {
+  return psensor_resolution_osr;
+}
 
 /**
  * @brief Set the resolution for pressure readings
@@ -212,7 +234,10 @@ ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {}
  * @return true: success false: failure
  */
 bool Adafruit_MS8607::setPressureResolution(
-    ms8607_pressure_resolution_t resolution) {}
+    ms8607_pressure_resolution_t resolution) {
+  psensor_resolution_osr = resolution;
+  return true;
+}
 
 /**
  * @brief Allow the MS8607 to hold the clock line low until it completes the
@@ -227,6 +252,7 @@ bool Adafruit_MS8607::enableHumidityClockStretching(bool enable_stretching) {
   } else {
     _hum_sensor_i2c_read_mode = MS8607_I2C_NO_HOLD;
   }
+  return true;
 }
 
 /**************************************************************************/

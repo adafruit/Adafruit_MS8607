@@ -25,12 +25,17 @@ void loop() {
     Adafruit_Sensor *temp_sensor = ms8607.getTemperatureSensor();
     Adafruit_Sensor *humidity_sensor = ms8607.getHumiditySensor();
 
+    // this is inefficient because it causes multiple reads of temperature and pressure, however it suffices to show how the interface works;
     temp_sensor->getEvent(&temp);
     pressure_sensor->getEvent(&pressure);
     humidity_sensor->getEvent(&humidity);
+
     Serial.print("Temperature: ");Serial.print(temp.temperature); Serial.println(" degrees C");
+
     Serial.print("Pressure: ");Serial.print(pressure.pressure); Serial.println(" hPa");
+
     Serial.print("Relative Humidity: ");Serial.print(humidity.relative_humidity); Serial.println(" %rH");
+    Serial.println("");
 
 
   delay(500);

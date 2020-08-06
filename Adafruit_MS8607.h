@@ -322,8 +322,7 @@ private:
   bool _psensor_crc_check(uint16_t *n_prom, uint8_t crc);
   bool _hsensor_crc_check(uint16_t value, uint8_t crc);
 
-  void _fetchTempCalibrationValues(void);
-  void _fetchHumidityCalibrationValues(void);
+  bool _fetch_temp_calibration_values(void);
   uint8_t _read_humidity_user_register(void);
   bool _write_humidity_user_register(uint8_t new_reg_value);
 
@@ -344,7 +343,7 @@ private:
   float _pressure,  ///< The current pressure measurement
       _temperature, ///< the current temperature measurement
       _humidity;    ///< The current humidity measurement
-  uint8_t psensor_resolution_osr;
+  ms8607_pressure_resolution_t psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
       temp_temp_coeff; ///< calibration constants
