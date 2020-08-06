@@ -9,7 +9,7 @@
  *  Pick one up today in the adafruit shop!
  *  ------> https://www.adafruit.com/product/XXXX
  *
- *  These sensors use XXX to communicate, X pins are required to interface.
+ *  These sensors use I2C to communicate, 2 pins are required to interface.
  *
  *  Adafruit invests time and resources providing this open source code,
  *  please support Adafruit andopen-source hardware by purchasing products
@@ -20,22 +20,6 @@
  *  BSD license, all text above must be included in any redistribution
  */
 #include <Adafruit_MS8607.h>
-// enum MS8607_status MS8607::hsensor_reset(void)
-// {
-//   // enum MS8607_status status;
-
-//   _i2cPort->beginTransmission((uint8_t)MS8607_HSENSOR_ADDR);
-//   _i2cPort->write((uint8_t)HSENSOR_RESET_COMMAND);
-//   _i2cPort->endTransmission();
-
-//   // if (status != MS8607_status_ok)
-//   //   return status;
-
-//   // hsensor_conversion_time = HSENSOR_CONVERSION_TIME_12b;
-//   // delay(HSENSOR_RESET_TIME);
-
-//   // return MS8607_status_ok;
-// }
 
 /*!
  *    @brief  Instantiates a new MS8607 class
@@ -44,6 +28,9 @@ Adafruit_MS8607::Adafruit_MS8607(void) {}
 Adafruit_MS8607::~Adafruit_MS8607(void) {
   if (temp_sensor) {
     delete temp_sensor;
+  }
+  if (pressure_sensor) {
+    delete pressure_sensor;
   }
 }
 
@@ -68,6 +55,7 @@ bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
   }
   // return reset();
   temp_sensor = new Adafruit_MS8607_Temp(this);
+  pressure_sensor = new Adafruit_MS8607_Pressure(this);
 
   return _init(sensor_id);
 }
@@ -80,6 +68,8 @@ bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
 bool Adafruit_MS8607::reset(void) {
   uint8_t cmd = P_T_RESET;
   return i2c_dev->write(&cmd, 1);
+
+  //   _i2cPort->write((uint8_t)HSENSOR_RESET_COMMAND);
 }
 
 /*!  @brief Initializer for post i2c/spi init
@@ -132,6 +122,8 @@ bool Adafruit_MS8607::getEvent(sensors_event_t *pressure, sensors_event_t *temp,
   // use helpers to fill in the events
   if (temp)
     fillTempEvent(temp, t);
+  if (pressure)
+    fillPressureEvent(pressure, t);
   // if (humidity)
   //   fillHumidityEvent(humidity, t);
   return true;
@@ -155,8 +147,30 @@ void Adafruit_MS8607_Temp::getSensor(sensor_t *sensor) {
   sensor->min_delay = 0;
   sensor->min_value = -40;
   sensor->max_value = 85;
-  sensor->resolution = 0.3; // depends on calibration data?
+  sensor->resolution = 0.01q; // depends on calibration data?
 }
+
+/**
+ * @brief  Gets the sensor_t object describing the MS8607's pressure sensor
+ *
+ * @param sensor The sensor_t object to be populated
+ */
+void Adafruit_MS8607_Pressure::getSensor(sensor_t *sensor) {
+  /* Clear the sensor_t object */
+  memset(sensor, 0, sizeof(sensor_t));
+
+  /* Insert the sensor name in the fixed length char array */
+  strncpy(sensor->name, "MS8607_P", sizeof(sensor->name) - 1);
+  sensor->name[sizeof(sensor->name) - 1] = 0;
+  sensor->version = 1;
+  sensor->sensor_id = _sensorID;
+  sensor->type = SENSOR_TYPE_PRESSURE;
+  sensor->min_delay = 0;
+  sensor->min_value = 10;
+  sensor->max_value = 2000;
+  sensor->resolution = 0.016;
+}
+
 /*!
     @brief  Gets the temperature as a standard sensor event
     @param  event Sensor event object that will be populated
@@ -164,6 +178,16 @@ void Adafruit_MS8607_Temp::getSensor(sensor_t *sensor) {
 */
 bool Adafruit_MS8607_Temp::getEvent(sensors_event_t *event) {
   _theMS8607->getEvent(NULL, event, NULL);
+
+  return true;
+}
+/*!
+    @brief  Gets the pressure as a standard sensor event
+    @param  event Sensor event object that will be populated
+    @returns true
+*/
+bool Adafruit_MS8607_Pressure::getEvent(sensors_event_t *event) {
+  _theMS8607->getEvent(event, NULL, NULL);
 
   return true;
 }
@@ -297,4 +321,21 @@ void Adafruit_MS8607::fillTempEvent(sensors_event_t *temp, uint32_t timestamp) {
  */
 Adafruit_Sensor *Adafruit_MS8607::getTemperatureSensor(void) {
   return temp_sensor;
+}
+/********************* Sensor Methods ****************************************/
+void Adafruit_MS8607::fillPressureEvent(sensors_event_t *pressure,
+                                        uint32_t timestamp) {
+  memset(pressure, 0, sizeof(sensors_event_t));
+  pressure->version = sizeof(sensors_event_t);
+  pressure->sensor_id = _sensorid_pressure;
+  pressure->type = SENSOR_TYPE_PRESSURE;
+  pressure->timestamp = timestamp;
+  pressure->pressure = _pressure;
+}
+/**
+ * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
+ * @return Adafruit_Sensor* a pointer to the temperature sensor object
+ */
+Adafruit_Sensor *Adafruit_MS8607::getPressureSensor(void) {
+  return pressure_sensor;
 }

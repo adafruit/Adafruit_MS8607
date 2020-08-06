@@ -72,12 +72,13 @@ class Adafruit_MS8607;
 
 /**
  * @brief Adafruit Unified Sensor interface for the temperature sensor component
- * of MS8607
+ * of the MS8607
  *
  */
 class Adafruit_MS8607_Temp : public Adafruit_Sensor {
 public:
-  /** @brief Create an Adafruit_Sensor compatible object for the temp sensor
+  /** @brief Create an Adafruit_Sensor compatible object for the temperature
+     sensor
       @param parent A pointer to the MS8607 class */
   Adafruit_MS8607_Temp(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
 
@@ -86,6 +87,24 @@ public:
 
 private:
   int _sensorID = 0x8600;
+  Adafruit_MS8607 *_theMS8607 = NULL;
+};
+/**
+ * @brief Adafruit Unified Sensor interface for the pressure sensor component
+ * of the MS8607
+ *
+ */
+class Adafruit_MS8607_Pressure : public Adafruit_Sensor {
+public:
+  /** @brief Create an Adafruit_Sensor compatible object for the Pressure sensor
+      @param parent A pointer to the MS8607 class */
+  Adafruit_MS8607_Pressure(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
+
+  bool getEvent(sensors_event_t *);
+  void getSensor(sensor_t *);
+
+private:
+  int _sensorID = 0x8601;
   Adafruit_MS8607 *_theMS8607 = NULL;
 };
 
@@ -105,6 +124,7 @@ public:
   bool getEvent(sensors_event_t *pressure, sensors_event_t *temp,
                 sensors_event_t *humidity);
   Adafruit_Sensor *getTemperatureSensor(void);
+  Adafruit_Sensor *getPressureSensor(void);
 
   bool _read(void);
   float _pressure,  ///< The current pressure measurement
@@ -113,21 +133,27 @@ public:
 
 protected:
   // uint16_t _sensorid_presure;     ///< ID number for pressure
-  uint16_t _sensorid_temp; ///< ID number for temperature
+  uint16_t _sensorid_temp;     ///< ID number for temperature
+  uint16_t _sensorid_pressure; ///< ID number for pressure
 
   Adafruit_I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
 
   Adafruit_MS8607_Temp *temp_sensor = NULL; ///< Temp sensor data object
+  Adafruit_MS8607_Pressure *pressure_sensor =
+      NULL; ///< Pressure sensor data object
 
 private:
   bool _psensor_crc_check(uint16_t *n_prom, uint8_t crc);
   void _fetchTempCalibrationValues(void);
   void _fetchHumidityCalibrationValues(void);
 
-  friend class Adafruit_MS8607_Temp; ///< Gives access to private members to
-                                     ///< Temperature data object
+  friend class Adafruit_MS8607_Temp;     ///< Gives access to private members to
+                                         ///< Temperature data object
+  friend class Adafruit_MS8607_Pressure; ///< Gives access to private members to
+                                         ///< Pressure data object
 
   void fillTempEvent(sensors_event_t *temp, uint32_t timestamp);
+  void fillPressureEvent(sensors_event_t *temp, uint32_t timestamp);
 
   void _applyTemperatureCorrection(void);
   void _applyHumidityCorrection(void);
