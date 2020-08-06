@@ -75,6 +75,16 @@ Adafruit_MS8607::~Adafruit_MS8607(void) {
   if (pressure_sensor) {
     delete pressure_sensor;
   }
+  if (humidity_sensor) {
+    delete humidity_sensor;
+  }
+  if (pt_i2c_dev) {
+    delete pt_i2c_dev;
+  }
+
+  if (hum_i2c_dev) {
+    delete hum_i2c_dev;
+  }
 }
 
 /*!
@@ -284,11 +294,8 @@ bool Adafruit_MS8607_Humidity::getEvent(sensors_event_t *event) {
  */
 bool Adafruit_MS8607::_read(void) {
 
-  int32_t dT, TEMP;
-  int64_t OFF, SENS, P, T2, OFF2, SENS2;
   uint8_t cmd;
-
-  uint8_t status;
+  bool status = true;
   uint8_t buffer[3];
 
   uint32_t raw_temp, raw_pressure;
@@ -296,31 +303,40 @@ bool Adafruit_MS8607::_read(void) {
   // First read temperature
   cmd = psensor_resolution_osr * 2;
   cmd |= PSENSOR_START_TEMPERATURE_ADC_CONVERSION;
-  status |= pt_i2c_dev->write(&cmd, 1);
+  status = pt_i2c_dev->write(&cmd, 1);
+  if (!status) {
+    return status;
+  }
 
-  // 20ms wait for conversion
-  // TODO: change delay depending on resolution
-  // delay(psensor_conversion_time[psensor_resolution_osr]);
   delay(18);
 
   buffer[0] = PSENSOR_READ_ADC;
-  status |= pt_i2c_dev->write_then_read(buffer, 1, buffer, 3);
-
+  status = pt_i2c_dev->write_then_read(buffer, 1, buffer, 3);
+  if (!status) {
+    return status;
+  }
   raw_temp =
       ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) | buffer[2];
 
   // Now read pressure
-  cmd = psensor_resolution_osr * 2; // ( << 1) OSR = USER[6
+  cmd = psensor_resolution_osr * 2;
   cmd |= PSENSOR_START_PRESSURE_ADC_CONVERSION;
-  status |= pt_i2c_dev->write(&cmd, 1);
+  status = pt_i2c_dev->write(&cmd, 1);
   delay(18);
 
   buffer[0] = PSENSOR_READ_ADC;
-  status |= pt_i2c_dev->write_then_read(buffer, 1, buffer, 3);
+  status = pt_i2c_dev->write_then_read(buffer, 1, buffer, 3);
 
   raw_pressure =
       ((uint32_t)buffer[0] << 16) | ((uint32_t)buffer[1] << 8) | buffer[2];
 
+  return _applyPTCorrections(raw_temp, raw_pressure);
+}
+
+bool Adafruit_MS8607::_applyPTCorrections(int32_t raw_temp,
+                                          int32_t raw_pressure) {
+  int32_t dT, TEMP;
+  int64_t OFF, SENS, P, T2, OFF2, SENS2;
   dT = (int32_t)raw_temp - ((int32_t)ref_temp << 8);
 
   // Actual temperature = 2000 + dT * TEMPSENS
@@ -358,9 +374,7 @@ bool Adafruit_MS8607::_read(void) {
   _temperature = ((float)TEMP - T2) / 100;
   _pressure = (float)P / 100;
 
-  return status;
-
-  //////////////////////////////////
+  return true;
 }
 
 bool Adafruit_MS8607::_read_humidity(void) {
@@ -381,6 +395,57 @@ bool Adafruit_MS8607::_read_humidity(void) {
   return true;
 }
 
+/********************* Sensor Methods ****************************************/
+/**
+ * @brief Gets the Adafruit_Sensor object for the MS0607's temperature sensor
+ * @return Adafruit_Sensor* a pointer to the temperature sensor object
+ */
+Adafruit_Sensor *Adafruit_MS8607::getTemperatureSensor(void) {
+  return temp_sensor;
+}
+
+/**
+ * @brief Gets the Adafruit_Sensor object for the MS0607's pressure sensor
+ * @return Adafruit_Sensor* a pointer to the pressure sensor object
+ */
+Adafruit_Sensor *Adafruit_MS8607::getPressureSensor(void) {
+  return pressure_sensor;
+}
+
+/**
+ * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
+ * @return Adafruit_Sensor* a pointer to the humidity sensor object
+ */
+Adafruit_Sensor *Adafruit_MS8607::getHumiditySensor(void) {
+  return humidity_sensor;
+}
+void Adafruit_MS8607::fillHumidityEvent(sensors_event_t *humidity,
+                                        uint32_t timestamp) {
+  memset(humidity, 0, sizeof(sensors_event_t));
+  humidity->version = sizeof(sensors_event_t);
+  humidity->sensor_id = _sensorid_humidity;
+  humidity->type = SENSOR_TYPE_PRESSURE;
+  humidity->timestamp = timestamp;
+  humidity->relative_humidity = _humidity;
+}
+void Adafruit_MS8607::fillTempEvent(sensors_event_t *temp, uint32_t timestamp) {
+  memset(temp, 0, sizeof(sensors_event_t));
+  temp->version = sizeof(sensors_event_t);
+  temp->sensor_id = _sensorid_temp;
+  temp->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
+  temp->timestamp = timestamp;
+  temp->temperature = _temperature;
+}
+
+void Adafruit_MS8607::fillPressureEvent(sensors_event_t *pressure,
+                                        uint32_t timestamp) {
+  memset(pressure, 0, sizeof(sensors_event_t));
+  pressure->version = sizeof(sensors_event_t);
+  pressure->sensor_id = _sensorid_pressure;
+  pressure->type = SENSOR_TYPE_PRESSURE;
+  pressure->timestamp = timestamp;
+  pressure->pressure = _pressure;
+}
 /***************************  Private Methods *********************************/
 bool Adafruit_MS8607::_psensor_crc_check(uint16_t *n_prom, uint8_t crc) {
   uint8_t cnt, n_bit;
@@ -412,7 +477,6 @@ bool Adafruit_MS8607::_psensor_crc_check(uint16_t *n_prom, uint8_t crc) {
   return (n_rem == crc);
 }
 
-/* Humidity sensor CRC verification */
 bool Adafruit_MS8607::_hsensor_crc_check(uint16_t value, uint8_t crc) {
 
   uint32_t polynom = 0x988000; // x^8 + x^5 + x^4 + 1
@@ -433,87 +497,3 @@ bool Adafruit_MS8607::_hsensor_crc_check(uint16_t value, uint8_t crc) {
   }
   return (result == crc);
 }
-
-/********************* Sensor Methods ****************************************/
-void Adafruit_MS8607::fillTempEvent(sensors_event_t *temp, uint32_t timestamp) {
-  memset(temp, 0, sizeof(sensors_event_t));
-  temp->version = sizeof(sensors_event_t);
-  temp->sensor_id = _sensorid_temp;
-  temp->type = SENSOR_TYPE_AMBIENT_TEMPERATURE;
-  temp->timestamp = timestamp;
-  temp->temperature = _temperature;
-}
-/**
- * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
- * @return Adafruit_Sensor* a pointer to the temperature sensor object
- */
-Adafruit_Sensor *Adafruit_MS8607::getTemperatureSensor(void) {
-  return temp_sensor;
-}
-/********************* Sensor Methods ****************************************/
-void Adafruit_MS8607::fillPressureEvent(sensors_event_t *pressure,
-                                        uint32_t timestamp) {
-  memset(pressure, 0, sizeof(sensors_event_t));
-  pressure->version = sizeof(sensors_event_t);
-  pressure->sensor_id = _sensorid_pressure;
-  pressure->type = SENSOR_TYPE_PRESSURE;
-  pressure->timestamp = timestamp;
-  pressure->pressure = _pressure;
-}
-/**
- * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
- * @return Adafruit_Sensor* a pointer to the temperature sensor object
- */
-Adafruit_Sensor *Adafruit_MS8607::getPressureSensor(void) {
-  return pressure_sensor;
-}
-
-/********************* Sensor Methods ****************************************/
-void Adafruit_MS8607::fillHumidityEvent(sensors_event_t *humidity,
-                                        uint32_t timestamp) {
-  memset(humidity, 0, sizeof(sensors_event_t));
-  humidity->version = sizeof(sensors_event_t);
-  humidity->sensor_id = _sensorid_humidity;
-  humidity->type = SENSOR_TYPE_PRESSURE;
-  humidity->timestamp = timestamp;
-  humidity->relative_humidity = _humidity;
-}
-/**
- * @brief Gets the Adafruit_Sensor object for the MS0607's humidity sensor
- * @return Adafruit_Sensor* a pointer to the temperature sensor object
- */
-Adafruit_Sensor *Adafruit_MS8607::getHumiditySensor(void) {
-  return humidity_sensor;
-}
-
-/*
-ool Adafruit_MS8607::_read_humidity(void) {
-
-  uint8_t buffer[3];
-  uint8_t crc;
-  uint8_t success = 0;
-  uint16_t raw_humidity;
-
-  // First read temperature
-  buffer[0] = _hum_sensor_i2c_read_mode;
-  success = hum_i2c_dev->write(buffer, 1);
-
-  // TODO: make determinable by resolution setting
-  delay(18);
-
-  success += hum_i2c_dev->read(buffer, 3);
-
-  raw_humidity = (buffer[0] << 8) | buffer[1];
-  crc = buffer[2];
-  // compute CRC
-  if (!_hsensor_crc_check(raw_humidity, crc)){
-    Serial.println("BAD HUMIDITY CRC");
-    return false;
-  }
-  _humidity = (
-            raw_humidity * (HUMIDITY_COEFF_MUL / (1 << 16))
-        ) + HUMIDITY_COEFF_ADD;
-  Serial.print("Setting humidity:"); Serial.println(_humidity);
-  return (success == 0);
-}
-*/

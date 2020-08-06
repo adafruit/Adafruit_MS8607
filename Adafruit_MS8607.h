@@ -333,6 +333,8 @@ private:
   void fillHumidityEvent(sensors_event_t *humidity, uint32_t timestamp);
 
   void _applyTemperatureCorrection(void);
+  bool _applyPTCorrections(int32_t raw_temp, int32_t raw_pressure);
+
   uint8_t psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
