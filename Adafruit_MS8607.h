@@ -87,8 +87,10 @@
 /*!
  *  I2C ADDRESS/BITS/SETTINGS. The MS8607 uses two different I2C addresses
  */
+#define MS8607_PT_ADDRESS                                                      \
+  0x76 ///< The pressure and temperature I2C address for the sensor
 #define MS8607_HUM_ADDRESS                                                     \
-  0x76 ///< The default pressure and temperature I2C address for the sensor
+  0x40 ///< The default pressure and temperature I2C address for the sensor
 
 // HSENSOR device commands
 #define HSENSOR_RESET_COMMAND 0xFE ///< reset command
@@ -196,8 +198,21 @@ typedef enum {
   MS8607_HUMIDITY_RESOLUTION_OSR_8b = 0x01,
 } ms8607_humidity_resolution_t;
 
+/**
+ * @brief Options for I2C clock stretch for humidity readings
+ *
+ */
+typedef enum {
+  MS8607_I2C_HOLD = 0xE5,
+  MS8607_I2C_NO_HOLD = 0xF5,
+} ms8607_hum_clock_stretch_t;
+
 class Adafruit_MS8607;
 
+#define HSENSOR_READ_HUMIDITY_W_HOLD_COMMAND                                   \
+  0xE5 ///< read humidity w hold command
+#define HSENSOR_READ_HUMIDITY_WO_HOLD_COMMAND                                  \
+  0xF5 ///< read humidity wo hold command
 /**
  * @brief Adafruit Unified Sensor interface for the temperature sensor component
  * of the MS8607
@@ -237,6 +252,25 @@ private:
 };
 
 /**
+ * @brief Adafruit Unified Sensor interface for the pressure sensor component
+ * of the MS8607
+ *
+ */
+class Adafruit_MS8607_Humidity : public Adafruit_Sensor {
+public:
+  /** @brief Create an Adafruit_Sensor compatible object for the Humidity sensor
+      @param parent A pointer to the MS8607 class */
+  Adafruit_MS8607_Humidity(Adafruit_MS8607 *parent) { _theMS8607 = parent; }
+
+  bool getEvent(sensors_event_t *);
+  void getSensor(sensor_t *);
+
+private:
+  int _sensorID = 0x8602;
+  Adafruit_MS8607 *_theMS8607 = NULL;
+};
+
+/**
  * Driver for the Adafruit MS8607 PHT sensor.
  */
 class Adafruit_MS8607 {
@@ -253,6 +287,7 @@ public:
                 sensors_event_t *humidity);
   Adafruit_Sensor *getTemperatureSensor(void);
   Adafruit_Sensor *getPressureSensor(void);
+  Adafruit_Sensor *getHumiditySensor(void);
 
   float _pressure,  ///< The current pressure measurement
       _temperature, ///< the current temperature measurement
@@ -262,12 +297,18 @@ protected:
   // uint16_t _sensorid_presure;     ///< ID number for pressure
   uint16_t _sensorid_temp;     ///< ID number for temperature
   uint16_t _sensorid_pressure; ///< ID number for pressure
+  uint16_t _sensorid_humidity; ///< ID number for humidity
 
-  Adafruit_I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
+  Adafruit_I2CDevice *pt_i2c_dev = NULL; ///< Pointer to I2C bus interface for
+                                         ///< the pressure & temperature sensor
+  Adafruit_I2CDevice *hum_i2c_dev =
+      NULL; ///< Pointer to I2C bus interface for the humidity sensor
 
   Adafruit_MS8607_Temp *temp_sensor = NULL; ///< Temp sensor data object
   Adafruit_MS8607_Pressure *pressure_sensor =
       NULL; ///< Pressure sensor data object
+  Adafruit_MS8607_Humidity *humidity_sensor =
+      NULL; ///< Humidity sensor data object
 
 private:
   bool _read(void);
@@ -282,15 +323,20 @@ private:
                                          ///< Temperature data object
   friend class Adafruit_MS8607_Pressure; ///< Gives access to private members to
                                          ///< Pressure data object
+  friend class Adafruit_MS8607_Humidity; ///< Gives access to private members to
+                                         ///< Humidity data object
 
   void fillTempEvent(sensors_event_t *temp, uint32_t timestamp);
   void fillPressureEvent(sensors_event_t *temp, uint32_t timestamp);
+  void fillHumidityEvent(sensors_event_t *humidity, uint32_t timestamp);
 
   void _applyTemperatureCorrection(void);
-  void _applyHumidityCorrection(void);
   uint8_t psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
       temp_temp_coeff; ///< calibration constants
+  ms8607_hum_clock_stretch_t
+      _hum_sensor_i2c_read_mode; ///< The current I2C mode to use for humidity
+                                 ///< reads
 };
 #endif
