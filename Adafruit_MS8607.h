@@ -324,6 +324,8 @@ private:
 
   void _fetchTempCalibrationValues(void);
   void _fetchHumidityCalibrationValues(void);
+  uint8_t _read_humidity_user_register(void);
+  bool _write_humidity_user_register(uint8_t new_reg_value);
 
   friend class Adafruit_MS8607_Temp;     ///< Gives access to private members to
                                          ///< Temperature data object

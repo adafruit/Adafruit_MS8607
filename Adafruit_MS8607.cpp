@@ -162,7 +162,9 @@ bool Adafruit_MS8607::init(int32_t sensor_id) {
   ref_temp = buffer[5];
   temp_temp_coeff = buffer[6];
   psensor_resolution_osr = MS8607_PRESSURE_RESOLUTION_OSR_8192;
+
   enableHumidityClockStretching(false);
+  setHumidityResolution(MS8607_HUMIDITY_RESOLUTION_OSR_12b);
 
   _hum_sensor_i2c_read_mode = MS8607_I2C_NO_HOLD;
   return true;
@@ -174,15 +176,10 @@ bool Adafruit_MS8607::init(int32_t sensor_id) {
  * @return ms8607_humidity_resolution_t the current resolution
  */
 ms8607_humidity_resolution_t Adafruit_MS8607::getHumidityResolution(void) {
-  // self._humidity_resolution = resolution
-  // reg_value = self._read_hum_user_register()
+  uint8_t reg_value = _read_humidity_user_register();
 
-  // # Clear the resolution bits
-  // reg_value &= ~_MS8607_HUM_USR_REG_RESOLUTION_MASK
-  // # and then set them to the new value
-  // reg_value |= resolution & _MS8607_HUM_USR_REG_RESOLUTION_MASK
-
-  // self._set_hum_user_register(reg_value)
+  return ((ms8607_humidity_resolution_t)(reg_value &
+                                         HSENSOR_USER_REG_RESOLUTION_MASK));
 }
 /**
  * @brief Set the resolution for humidity readings
@@ -191,13 +188,23 @@ ms8607_humidity_resolution_t Adafruit_MS8607::getHumidityResolution(void) {
  * @return true: success false: failure
  */
 bool Adafruit_MS8607::setHumidityResolution(
-    ms8607_humidity_resolution_t resolution) {}
+    ms8607_humidity_resolution_t resolution) {
+  uint8_t reg_value = _read_humidity_user_register();
+
+  // unset current value
+  reg_value &= ~HSENSOR_USER_REG_RESOLUTION_MASK;
+  // set new value
+  reg_value |= resolution & HSENSOR_USER_REG_RESOLUTION_MASK;
+
+  return _write_humidity_user_register(reg_value);
+}
 /**
  * @brief Get the currently set resolution for pressure readings
  *
  * @return ms8607_pressure_resolution_t the current resolution
  */
 ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {}
+
 /**
  * @brief Set the resolution for pressure readings
  *
@@ -206,6 +213,7 @@ ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {}
  */
 bool Adafruit_MS8607::setPressureResolution(
     ms8607_pressure_resolution_t resolution) {}
+
 /**
  * @brief Allow the MS8607 to hold the clock line low until it completes the
  * requested measurements
@@ -430,9 +438,16 @@ bool Adafruit_MS8607::_applyPTCorrections(int32_t raw_temp,
 
   return true;
 }
-
+/*
+humidity user register value: 0b10
+humidity resolution raw value: 0x0
+Temperature: 29.85 degrees C
+Pressure: 1008.94 hPa
+Relative Humidity: 25.94 %rH
+*/
 bool Adafruit_MS8607::_read_humidity(void) {
   uint8_t buffer[3];
+  getHumidityResolution();
   buffer[0] = MS8607_I2C_NO_HOLD;
   // self._buffer[0] = _MS8607_HUM_CMD_READ_NO_HOLD
   hum_i2c_dev->write(buffer, 1);
@@ -550,4 +565,18 @@ bool Adafruit_MS8607::_hsensor_crc_check(uint16_t value, uint8_t crc) {
     polynom >>= 1;
   }
   return (result == crc);
+}
+
+uint8_t Adafruit_MS8607::_read_humidity_user_register(void) {
+  uint8_t buffer = HSENSOR_READ_USER_REG_COMMAND;
+  hum_i2c_dev->write_then_read(&buffer, 1, &buffer, 1, true);
+
+  return buffer;
+}
+
+bool Adafruit_MS8607::_write_humidity_user_register(uint8_t new_reg_value) {
+  uint8_t buffer[2];
+  buffer[0] = HSENSOR_WRITE_USER_REG_COMMAND;
+  buffer[1] = new_reg_value;
+  return hum_i2c_dev->write(buffer, 2);
 }
