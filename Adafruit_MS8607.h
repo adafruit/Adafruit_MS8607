@@ -1,6 +1,80 @@
 /*!
  *  @file Adafruit_MS8607.h
+ *  @mainpage
+ *
+ *  This is a library for the MS8607 Pressure, Temperature, and Humidity Sensor
+ from TE Connectivity
+ *
+ *  Designed specifically to work with the Adafruit MS8607 Pressure, Humidity,
+ * and Temperature Sensor.
+ *
+ *  Pick one up today in the adafruit shop!
+ *  ------> https://www.adafruit.com/product/XXXX
+ *
+ *  These sensors use I2C to communicate, 2 pins are required to interface.
+ *
+ *  Adafruit invests time and resources providing this open source code,
+ *  please support Adafruit andopen-source hardware by purchasing products
+ *  from Adafruit!
+ *
+ *  @section author Author
+ *
+ *  Bryan Siepert for Adafruit Industries
+ * Parts of this library were adapted by Bryan Siepert for Adafruit Industries,
+ July 31,2020 from
+ * the Sparkfun_MS8607_Arduino_Library code. The License and Copyright info from
+ that library
+ * follows:
+
+ * This is a library written for the MS8607. Originally written by
+ TEConnectivity
+ * with an MIT license. Library updated and brought to fit Arduino Library
+ standards
+ * by PaulZC, October 30th, 2019. Based extensively on the
+ Sparkfun_MS5637_Arduino_Library
+ * by Nathan Seidle @ SparkFun Electronics, April 13th, 2018.
+
+ * The MS8607 is a combined pressure, humidity and temperature sensor. The
+ pressure
+ * sensor will operate down to 10mbar which is equivalent to an altitude of
+ approx.
+ * 31,000m making it suitable for high altitude ballooning as well as many other
+ * weather station applications.
+
+ * This library handles the initialization of the MS8607 and is able to
+ * query the sensor for different readings.
+
+ * Development environment specifics:
+ * Arduino IDE 1.8.10
+ *
+ * @section license License
+ *  MIT License
+ *
+ * @section copyright Copyright
+
+ * Copyright (c) 2016 TE Connectivity
+
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in
+ all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+
  */
+
 #ifndef __MS8607_H__
 #define __MS8607_H__
 
@@ -13,9 +87,52 @@
 /*!
  *  I2C ADDRESS/BITS/SETTINGS. The MS8607 uses two different I2C addresses
  */
-#define MS8607_PT_ADDRESS                                                      \
-  (0x76) /**< The default pressure and temperature I2C address for the sensor. \
-          */
+#define MS8607_HUM_ADDRESS                                                     \
+  0x76 ///< The default pressure and temperature I2C address for the sensor
+
+// HSENSOR device commands
+#define HSENSOR_RESET_COMMAND 0xFE ///< reset command
+#define HSENSOR_READ_HUMIDITY_W_HOLD_COMMAND                                   \
+  0xE5 ///< read humidity w hold command
+#define HSENSOR_READ_HUMIDITY_WO_HOLD_COMMAND                                  \
+  0xF5 ///< read humidity wo hold command
+#define HSENSOR_READ_SERIAL_FIRST_8BYTES_COMMAND                               \
+  0xFA0F ///< read serial first 8bytes command
+#define HSENSOR_READ_SERIAL_LAST_6BYTES_COMMAND                                \
+  0xFCC9                                    ///< read serial last 6bytes command
+#define HSENSOR_WRITE_USER_REG_COMMAND 0xE6 ///< write user reg command
+#define HSENSOR_READ_USER_REG_COMMAND 0xE7  ///< read user reg command
+
+// Processing constants
+#define HSENSOR_TEMPERATURE_COEFFICIENT                                        \
+  (float)(-0.15)                            ///< temperature coefficient
+#define HSENSOR_CONSTANT_A (float)(8.1332)  ///< constant a
+#define HSENSOR_CONSTANT_B (float)(1762.39) ///< constant b
+#define HSENSOR_CONSTANT_C (float)(235.66)  ///< constant c
+
+// Coefficients for temperature computation
+#define TEMPERATURE_COEFF_MUL (175.72) ///< temperature coeff mul
+#define TEMPERATURE_COEFF_ADD (-46.85) ///< temperature coeff add
+
+// Coefficients for relative humidity computation
+#define HUMIDITY_COEFF_MUL (125) ///< humidity coeff mul
+#define HUMIDITY_COEFF_ADD (-6)  ///< humidity coeff add
+
+// Conversion timings
+#define HSENSOR_CONVERSION_TIME_12b 16 ///< conversion time 12b
+#define HSENSOR_CONVERSION_TIME_10b 5  ///< conversion time 10b
+#define HSENSOR_CONVERSION_TIME_8b 3   ///< conversion time 8b
+#define HSENSOR_CONVERSION_TIME_11b 9  ///< conversion time 11b
+
+// HSENSOR User Register masks and bit position
+#define HSENSOR_USER_REG_RESOLUTION_MASK 0x81 ///< user reg resolution mask
+#define HSENSOR_USER_REG_END_OF_BATTERY_MASK                                   \
+  0x40 ///< user reg end of battery mask
+#define HSENSOR_USER_REG_ENABLE_ONCHIP_HEATER_MASK                             \
+  0x4 ///< user reg enable onchip heater mask
+#define HSENSOR_USER_REG_DISABLE_OTP_RELOAD_MASK                               \
+  0x2 ///< user reg disable otp reload mask
+
 #define MS8607_RH_ADDRESS (0x40) /**< Humidity I2C address for the sensor. */
 
 // PSENSOR commands
@@ -66,7 +183,18 @@ typedef enum {
   MS8607_PRESSURE_RESOLUTION_OSR_2048, ///< 3
   MS8607_PRESSURE_RESOLUTION_OSR_4096, ///< 4
   MS8607_PRESSURE_RESOLUTION_OSR_8192, ///< 5
-} ms8607_pressure_range_t;
+} ms8607_pressure_resolution_t;
+
+/**
+ * @brief Options for setHumidityResolution
+ *
+ */
+typedef enum {
+  MS8607_HUMIDITY_RESOLUTION_OSR_12b = 0x00,
+  MS8607_HUMIDITY_RESOLUTION_OSR_11b = 0x81,
+  MS8607_HUMIDITY_RESOLUTION_OSR_10b = 0x80,
+  MS8607_HUMIDITY_RESOLUTION_OSR_8b = 0x01,
+} ms8607_humidity_resolution_t;
 
 class Adafruit_MS8607;
 
@@ -117,16 +245,15 @@ public:
   ~Adafruit_MS8607(void);
 
   bool begin(TwoWire *wire = &Wire, int32_t sensor_id = 0);
-  bool _init(int32_t sensor_id);
+  bool init(int32_t sensor_id);
 
   bool reset(void);
-  // SENSOR
+
   bool getEvent(sensors_event_t *pressure, sensors_event_t *temp,
                 sensors_event_t *humidity);
   Adafruit_Sensor *getTemperatureSensor(void);
   Adafruit_Sensor *getPressureSensor(void);
 
-  bool _read(void);
   float _pressure,  ///< The current pressure measurement
       _temperature, ///< the current temperature measurement
       _humidity;    ///< The current humidity measurement
@@ -143,7 +270,11 @@ protected:
       NULL; ///< Pressure sensor data object
 
 private:
+  bool _read(void);
+  bool _read_humidity(void);
   bool _psensor_crc_check(uint16_t *n_prom, uint8_t crc);
+  bool _hsensor_crc_check(uint16_t value, uint8_t crc);
+
   void _fetchTempCalibrationValues(void);
   void _fetchHumidityCalibrationValues(void);
 

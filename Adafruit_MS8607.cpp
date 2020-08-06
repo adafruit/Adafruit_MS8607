@@ -1,24 +1,67 @@
 /*!
  *  @file Adafruit_MS8607.cpp
  *
- *  This is a library for the MS8607
- *
- *  Designed specifically to work with the Adafruit MS8607 Pressure, Humidity,
- * and Temperature Sensor.
- *
- *  Pick one up today in the adafruit shop!
- *  ------> https://www.adafruit.com/product/XXXX
- *
- *  These sensors use I2C to communicate, 2 pins are required to interface.
- *
+
  *  Adafruit invests time and resources providing this open source code,
  *  please support Adafruit andopen-source hardware by purchasing products
  *  from Adafruit!
  *
- *  Bryan Siepert (Adafruit Industries)
+ *  Author:
+ *  Bryan Siepert for Adafruit Industries
  *
- *  BSD license, all text above must be included in any redistribution
+ * Parts of this library were adapted by Bryan Siepert for Adafruit Industries,
+ July 31,2020 from
+ * the Sparkfun_MS8607_Arduino_Library code. The License and Copyright info from
+ that library
+ * follows:
+
+ * This is a library written for the MS8607. Originally written by
+ TEConnectivity
+ * with an MIT license. Library updated and brought to fit Arduino Library
+ standards
+ * by PaulZC, October 30th, 2019. Based extensively on the
+ Sparkfun_MS5637_Arduino_Library
+ * by Nathan Seidle @ SparkFun Electronics, April 13th, 2018.
+
+ * The MS8607 is a combined pressure, humidity and temperature sensor. The
+ pressure
+ * sensor will operate down to 10mbar which is equivalent to an altitude of
+ approx.
+ * 31,000m making it suitable for high altitude ballooning as well as many other
+ * weather station applications.
+
+ * This library handles the initialization of the MS8607 and is able to
+ * query the sensor for different readings.
+
+ * Development environment specifics:
+ * Arduino IDE 1.8.10
+ *
+
+ *  MIT License
+
+ * Copyright (c) 2016 TE Connectivity
+
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+
+ * The above copyright notice and this permission notice shall be included in
+ all
+ * copies or substantial portions of the Software.
+
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+
  */
+
 #include <Adafruit_MS8607.h>
 
 /*!
@@ -57,7 +100,7 @@ bool Adafruit_MS8607::begin(TwoWire *wire, int32_t sensor_id) {
   temp_sensor = new Adafruit_MS8607_Temp(this);
   pressure_sensor = new Adafruit_MS8607_Pressure(this);
 
-  return _init(sensor_id);
+  return init(sensor_id);
 }
 
 /**
@@ -70,13 +113,14 @@ bool Adafruit_MS8607::reset(void) {
   return i2c_dev->write(&cmd, 1);
 
   //   _i2cPort->write((uint8_t)HSENSOR_RESET_COMMAND);
+  // HSENSOR_RESET_TIME 15 (ms)
 }
 
 /*!  @brief Initializer for post i2c/spi init
  *   @param sensor_id Optional unique ID for the sensor set
  *   @returns True if chip identified and initialized
  */
-bool Adafruit_MS8607::_init(int32_t sensor_id) {
+bool Adafruit_MS8607::init(int32_t sensor_id) {
   uint8_t offset = 0;
   uint16_t buffer[8];
   uint8_t tmp_buffer[2];
@@ -276,6 +320,53 @@ bool Adafruit_MS8607::_read(void) {
 
   //////////////////////////////////
 }
+
+bool Adafruit_MS8607::_read_humidity(void) {
+  enum MS8607_status status = MS8607_status_ok;
+  uint8_t i2c_status;
+  uint16_t _adc;
+  uint8_t buffer[3];
+  uint8_t crc;
+  uint8_t i;
+
+  /* Read data */
+  _i2cPort->beginTransmission((uint8_t)MS8607_HSENSOR_ADDR);
+
+  if (hsensor_i2c_master_mode == MS8607_i2c_hold) {
+    _i2cPort->write(HSENSOR_READ_HUMIDITY_W_HOLD_COMMAND);
+    i2c_status = _i2cPort->endTransmission();
+  } else {
+    _i2cPort->write(HSENSOR_READ_HUMIDITY_WO_HOLD_COMMAND);
+    i2c_status = _i2cPort->endTransmission();
+    // delay depending on resolution
+    delay(hsensor_conversion_time);
+  }
+  _i2cPort->requestFrom((uint8_t)MS8607_HSENSOR_ADDR, 3U);
+  for (i = 0; i < 3; i++) {
+    buffer[i] = _i2cPort->read();
+  }
+
+  if (status != MS8607_status_ok)
+    return status;
+
+  if (i2c_status == i2c_status_err_overflow)
+    return MS8607_status_no_i2c_acknowledge;
+  if (i2c_status != i2c_status_ok)
+    return MS8607_status_i2c_transfer_error;
+
+  _adc = (buffer[0] << 8) | buffer[1];
+  crc = buffer[2];
+
+  // compute CRC
+  status = hsensor_crc_check(_adc, crc);
+  if (status != MS8607_status_ok)
+    return status;
+
+  *adc = _adc;
+
+  return status;
+}
+
 /***************************  Private Methods *********************************/
 bool Adafruit_MS8607::_psensor_crc_check(uint16_t *n_prom, uint8_t crc) {
   uint8_t cnt, n_bit;
@@ -306,6 +397,28 @@ bool Adafruit_MS8607::_psensor_crc_check(uint16_t *n_prom, uint8_t crc) {
   n_prom[0] = crc_read;
   return (n_rem == crc);
 }
+
+/* Humidity sensor CRC verification */
+bool Adafruit_MS8607::_hsensor_crc_check(uint16_t value, uint8_t crc) {
+  uint32_t polynom = 0x988000; // x^8 + x^5 + x^4 + 1
+  uint32_t msb = 0x800000;
+  uint32_t mask = 0xFF8000;
+  uint32_t result = (uint32_t)value << 8; // Pad with zeros as specified in spec
+
+  while (msb != 0x80) {
+
+    // Check if msb of current value is 1 and apply XOR mask
+    if (result & msb)
+      result = ((result ^ polynom) & mask) | (result & ~mask);
+
+    // Shift by one
+    msb >>= 1;
+    mask >>= 1;
+    polynom >>= 1;
+  }
+  return (result == crc);
+}
+
 /********************* Sensor Methods ****************************************/
 void Adafruit_MS8607::fillTempEvent(sensors_event_t *temp, uint32_t timestamp) {
   memset(temp, 0, sizeof(sensors_event_t));
