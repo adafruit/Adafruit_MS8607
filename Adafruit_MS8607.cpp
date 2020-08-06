@@ -162,9 +162,63 @@ bool Adafruit_MS8607::init(int32_t sensor_id) {
   ref_temp = buffer[5];
   temp_temp_coeff = buffer[6];
   psensor_resolution_osr = MS8607_PRESSURE_RESOLUTION_OSR_8192;
+  enableHumidityClockStretching(false);
 
   _hum_sensor_i2c_read_mode = MS8607_I2C_NO_HOLD;
   return true;
+}
+
+/**
+ * @brief Get the currently set resolution for humidity readings
+ *
+ * @return ms8607_humidity_resolution_t the current resolution
+ */
+ms8607_humidity_resolution_t Adafruit_MS8607::getHumidityResolution(void) {
+  // self._humidity_resolution = resolution
+  // reg_value = self._read_hum_user_register()
+
+  // # Clear the resolution bits
+  // reg_value &= ~_MS8607_HUM_USR_REG_RESOLUTION_MASK
+  // # and then set them to the new value
+  // reg_value |= resolution & _MS8607_HUM_USR_REG_RESOLUTION_MASK
+
+  // self._set_hum_user_register(reg_value)
+}
+/**
+ * @brief Set the resolution for humidity readings
+ *
+ * @param resolution The new resolution to set
+ * @return true: success false: failure
+ */
+bool Adafruit_MS8607::setHumidityResolution(
+    ms8607_humidity_resolution_t resolution) {}
+/**
+ * @brief Get the currently set resolution for pressure readings
+ *
+ * @return ms8607_pressure_resolution_t the current resolution
+ */
+ms8607_pressure_resolution_t Adafruit_MS8607::getPressureResolution(void) {}
+/**
+ * @brief Set the resolution for pressure readings
+ *
+ * @param resolution The new resolution to set
+ * @return true: success false: failure
+ */
+bool Adafruit_MS8607::setPressureResolution(
+    ms8607_pressure_resolution_t resolution) {}
+/**
+ * @brief Allow the MS8607 to hold the clock line low until it completes the
+ * requested measurements
+ *
+ * @param enable_stretching true: enable
+ * @return true: success false: failure
+ */
+bool Adafruit_MS8607::enableHumidityClockStretching(bool enable_stretching) {
+  if (enable_stretching) {
+    _hum_sensor_i2c_read_mode = MS8607_I2C_HOLD;
+  } else {
+    _hum_sensor_i2c_read_mode = MS8607_I2C_NO_HOLD;
+  }
 }
 
 /**************************************************************************/

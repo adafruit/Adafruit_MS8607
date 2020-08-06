@@ -285,15 +285,19 @@ public:
 
   bool reset(void);
 
+  ms8607_humidity_resolution_t getHumidityResolution(void);
+  bool setHumidityResolution(ms8607_humidity_resolution_t res);
+
+  ms8607_pressure_resolution_t getPressureResolution(void);
+  bool setPressureResolution(ms8607_pressure_resolution_t res);
+
+  bool enableHumidityClockStretching(bool enable_stretching);
+
   bool getEvent(sensors_event_t *pressure, sensors_event_t *temp,
                 sensors_event_t *humidity);
   Adafruit_Sensor *getTemperatureSensor(void);
   Adafruit_Sensor *getPressureSensor(void);
   Adafruit_Sensor *getHumiditySensor(void);
-
-  float _pressure,  ///< The current pressure measurement
-      _temperature, ///< the current temperature measurement
-      _humidity;    ///< The current humidity measurement
 
 protected:
   // uint16_t _sensorid_presure;     ///< ID number for pressure
@@ -335,6 +339,9 @@ private:
   void _applyTemperatureCorrection(void);
   bool _applyPTCorrections(int32_t raw_temp, int32_t raw_pressure);
 
+  float _pressure,  ///< The current pressure measurement
+      _temperature, ///< the current temperature measurement
+      _humidity;    ///< The current humidity measurement
   uint8_t psensor_resolution_osr;
   uint16_t press_sens, press_offset, press_sens_temp_coeff,
       press_offset_temp_coeff, ref_temp,
@@ -344,3 +351,13 @@ private:
                                  ///< reads
 };
 #endif
+/*
+       boolean humidityHasBeenRead = true;
+       boolean pressureHasBeenRead = true;
+       boolean temperatureHasBeenRead = true;
+       bool hsensor_read_user_register(uint8_t *value);
+       bool hsensor_write_user_register(uint8_t value);
+       bool hsensor_reset(void);
+       bool psensor_reset(void);
+
+*/
