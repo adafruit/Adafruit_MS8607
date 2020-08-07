@@ -3,7 +3,9 @@
 
 This is the Adafruit MS8607 Arduino Library for Arduino
 Tested and works great with the Adafruit MS8607 Breakout Board
+
 [<img src="assets/board.png?raw=true" width="500px">](https://www.adafruit.com/products/4701)
+
 Adafruit invests time and resources providing this open source code, please support Adafruit and open-source hardware by purchasing products from Adafruit!
 
 # Installation
@@ -12,7 +14,6 @@ To install, use the Arduino Library Manager and search for "Adafruit MS8607" and
 ## Dependencies
  * [Adafruit BusIO](https://github.com/adafruit/Adafruit_BusIO)
  * [Adafruit Unified Sensor Driver](https://github.com/adafruit/Adafruit_Sensor)
- * [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library)
 
 # Contributing
 
