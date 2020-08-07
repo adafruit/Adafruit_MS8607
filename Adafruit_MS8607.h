@@ -9,7 +9,7 @@
  * and Temperature Sensor.
  *
  *  Pick one up today in the adafruit shop!
- *  ------> https://www.adafruit.com/product/XXXX
+ *  ------> https://www.adafruit.com/product/4716
  *
  *  These sensors use I2C to communicate, 2 pins are required to interface.
  *
@@ -20,6 +20,7 @@
  *  @section author Author
  *
  *  Bryan Siepert for Adafruit Industries
+ *
  * Parts of this library were adapted by Bryan Siepert for Adafruit Industries,
  July 31,2020 from
  * the Sparkfun_MS8607_Arduino_Library code. The License and Copyright info from

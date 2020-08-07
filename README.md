@@ -4,7 +4,7 @@
 This is the Adafruit MS8607 Arduino Library for Arduino
 Tested and works great with the Adafruit MS8607 Breakout Board
 
-[<img src="assets/board.png?raw=true" width="500px">](https://www.adafruit.com/products/4701)
+[<img src="assets/board.png?raw=true" width="500px">](https://www.adafruit.com/products/4716)
 
 Adafruit invests time and resources providing this open source code, please support Adafruit and open-source hardware by purchasing products from Adafruit!
 
