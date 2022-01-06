@@ -175,6 +175,7 @@ bool Adafruit_MS8607::_fetch_temp_calibration_values(void) {
  *   @returns True if chip identified and initialized
  */
 bool Adafruit_MS8607::init(int32_t sensor_id) {
+  (void)sensor_id;
 
   if (!_fetch_temp_calibration_values()) {
     return false;
