@@ -141,6 +141,8 @@ bool Adafruit_MS8607::reset(void) {
     return false;
   }
   delay(15);
+
+  return true;
 }
 
 bool Adafruit_MS8607::_fetch_temp_calibration_values(void) {
